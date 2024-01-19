@@ -45,44 +45,67 @@ def doReadPage(_url) -> BeautifulSoup:
     except Exception as e:
         print('Error:', e)
 
+
 def get_history(user_history_url, start_date=None, end_date=None):
+    data = {
+        'days': {},
+        'types': {}
+    }
     dom = doReadPage(user_history_url)
+    last_page = int(dom.find_all('li', class_='page')[-1].text)
+    print('last page: ', last_page)
+    current_page = 1
+    while True:
+        current_url = f"{user_history_url}?page={current_page}"
+        print(f'Page {current_page}/{last_page}')
+        current_dom = doReadPage(current_url)
+        # ITEMS
+        items = current_dom.find_all('div', class_='grid-item')
+        for item in items:
+            
 
-    # ITEMS
-    items = dom.find_all('div', class_='grid-item')
-    items_dict = {}
-    for item in items:
-        item_runtime = item['data-runtime']
-        item_type = item['data-type']
-        item_name = item.find('meta', itemprop='name')['content']
-        item_url = item.find('meta', itemprop='url')['content']
-        item_date = item.find('span', class_='format-date')['data-date']
-        item_date = arrow.get(item_date).to('local').format(USER_DATE_FORMAT)
 
-        item_day = arrow.get(item_date).format(USER_DAY_FORMAT)
-        if item_day not in items_dict:
-            items_dict[item_day] = []
+            meta_attrs = {}
+            item_meta_tags = item.find_all('meta')
+            for meta in item_meta_tags:
+                attrs = meta.attrs
+                print(attrs)
+                if 'itemprop' in attrs:
+                    meta_attrs['meta-' + attrs['itemprop'].lower()] = attrs['content']
+
+            item_name = item.find('meta', itemprop='name')['content']
+            item_url = item.find('meta', itemprop='url')['content']
+
+            item_date = item.find('span', class_='format-date')['data-date']
+            item_date = arrow.get(item_date).to('local').format(USER_DATE_FORMAT)
+            item_day = arrow.get(item_date).format(USER_DAY_FORMAT)
+
+            # Add new item to dict
+            if item_day not in data['days']:
+                data['days'][item_day] = []
+
+            data['days'][item_day].append({
+                'date': item_date
+                } | {att: item[att] for att in item.attrs} | meta_attrs
+            )
+            print(json.dumps(data, indent=2))
         
-        items_dict[item_day].append({
-            'name': item_name,
-            'url': item_url,
-            'runtime': item_runtime,
-            'type': item_type,
-            'date': item_date
-        })
+        if start_date is not None and end_date is not None:
+            items_dates = data['days'].copy().keys()
+            arrange = arrow.Arrow.range('day', arrow.get(start_date), arrow.get(end_date))
+            arrange = [date.format(USER_DAY_FORMAT) for date in arrange]
+            # arrange = map(lambda x: x.format(day_format), arrange)
 
-    if start_date is not None and end_date is not None:
-        items_dates = items_dict.copy().keys()
-        arrange = arrow.Arrow.range('day', arrow.get(start_date), arrow.get(end_date))
-        arrange = [date.format(USER_DAY_FORMAT) for date in arrange]
-        # arrange = map(lambda x: x.format(day_format), arrange)
+            for date in items_dates:
+                if date not in arrange:
+                    del data['days'][date]
 
-        for date in items_dates:
-            if date not in arrange:
-                del items_dict[date]
+        if current_page == last_page:
+            break
+        current_page += 1
 
-    print(json.dumps(items_dict, indent=4))
-    return items_dict
+    return data
+
 
 def get_today_items():
     items_dict = get_history(USER_HISTORY_URL)
@@ -107,29 +130,80 @@ def get_today_and_yesterday_items():
     return today_items + yesterday_items
 """
 
-def calculate_runtime(history):
+def get_name_from_id(id):
+    dom = doReadPage(f"{SITE_URL}/movies/{id}")
+    name = dom.find('meta', itemprop='name')['content']
+    return name
+
+def history_reader(history):
+    watched_movies = {}
+    watched_shows = {}
+    watched_episodes = {}
+    movie_count = 0
     movie_runtime = 0
+    episode_count = 0
     episode_runtime = 0
-    diff_runtime = 0
     total_runtime = 0
-    for date in history:
-        for item in history[date]:
-            if item['type'] == 'movie':
-                movie_runtime += int(item['runtime'])
-            elif item['type'] == 'episode':
-                episode_runtime += int(item['runtime'])
-            total_runtime += int(item['runtime'])
+
+    days = history['days']
+
+    for day in days:
+        for item in days[day]:
+            if item['data-type'] == 'movie':
+                if item['data-movie-id'] not in watched_movies:
+                    watched_movies[item['data-movie-id']] = {
+                        'name': item['name'],
+                        'count': 1
+                    }
+                watched_movies[item['data-movie-id']]['count'] += 1
+                movie_runtime += int(item['data-runtime'])
+                movie_count += 1
+            elif item['data-type'] == 'episode':
+                if item['data-episode-id'] not in watched_episodes:
+                    watched_episodes[item['data-episode-id']] = {
+                        'name': item['name'],
+                        'count': 1
+                    }
+                watched_episodes[item['data-episode-id']]['count'] += 1
+                episode_runtime += int(item['data-runtime'])
+                episode_count += 1
+
+    # sort most watched
+    watched_movies_sorted = sorted(watched_movies.items(), key=lambda x: x[1]['count'], reverse=True)
+    watched_episodes_sorted = sorted(watched_episodes.items(), key=lambda x: x[1]['count'], reverse=True)
+    total_runtime = movie_runtime + episode_runtime
     diff_runtime = movie_runtime - episode_runtime
-    return {'movie': movie_runtime, 'episode': episode_runtime, 'total': total_runtime, 'diff': diff_runtime}
+
+    context = {
+        'movie': {
+            'count': movie_count,
+            'unique_count': watched_movies,
+            'runtime': movie_runtime
+        },
+        'episode': {
+            'count': episode_count,
+            'unique_count': watched_episodes,
+            'runtime': episode_runtime
+        },
+        'total': {
+            'count': movie_count + episode_count,
+            'runtime': total_runtime
+        },
+        'diff': {
+            'count': movie_count - episode_count,
+            'runtime': diff_runtime
+        }
+    }
+
+    return context
 
 if __name__ == '__main__':
 
-    history_items = get_history(
-        user_history_url=USER_HISTORY_URL,
-        start_date="2023-11-14",
-        end_date= arrow.now().format(USER_DAY_FORMAT)
+    history = get_history(
+        user_history_url=USER_HISTORY_URL
+        # start_date="2023-11-14",
+        # end_date= arrow.now().format(USER_DAY_FORMAT)
     )
 
-    history_runtime = calculate_runtime(history_items)
-
-    print(json.dumps(history_runtime, indent=4))
+    context = history_reader(history)
+    print(json.dumps(context, indent=4))
