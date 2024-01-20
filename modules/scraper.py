@@ -32,12 +32,15 @@ def get_dom(_url) -> BeautifulSoup:
     except Exception as e:
         print('Error:', e)
 
-def get_meta_attrs(item) -> dict:
+def get_meta_attrs(item:BeautifulSoup) -> dict:
+    """
+    Returns a dictionary of meta attributes.
+    """
     meta_attrs = {}
-    item_meta_tags = item.find_all('meta')
-    for meta in item_meta_tags:
-        tag_name = meta.name
-        tag_attrs = meta.attrs
+    tags = item.find_all('meta')
+    for tag in tags:
+        tag_name = tag.name
+        tag_attrs = tag.attrs
         for tag_att in tag_attrs:
             meta_type = tag_attrs[tag_att]
             meta_content = tag_attrs['content']
