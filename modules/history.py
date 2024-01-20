@@ -71,9 +71,7 @@ def get_first_watched_date(history, item_id, item_type):
             if item['data-type'] == item_type and item[key] == item_id:
                 dates.append(item['date'])
 
-    if dates:            
-        return dates[-1]
-    return None
+    return dates[-1] if dates else None
 
 def history_reader(history:dict) -> dict:
     watched_movies = {}
