@@ -54,13 +54,17 @@ def get_meta_attrs(item) -> dict:
 
     return meta_attrs
 
-def get_element_attrs(item, element_name) -> dict:
-    img_attrs = {}
-    item_img_tags = item.find_all(element_name)
-    for img in item_img_tags:
-        tag_name = img.name
-        tag_attrs = img.attrs
+def get_element_attrs(item:BeautifulSoup, element_name:str) -> dict:
+    """
+    Returns a dictionary of element attributes.
+    """
+    element_attrs = {}
+    tags = item.find_all(element_name)
+    for tag in tags:
+        tag_name = tag.name
+        tag_attrs = tag.attrs
         for tag_att in tag_attrs:
             content = tag_attrs[tag_att]
-            img_attrs[tag_name+'-'+tag_att] = content
-    return img_attrs
+            element_attrs[tag_name+'-'+tag_att] = content
+
+    return element_attrs
