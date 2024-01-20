@@ -4,11 +4,7 @@ from .scraper import (
     get_meta_attrs
 )
 
-from .constants import (
-  USER_DATE_FORMAT,
-  USER_DAY_FORMAT
-)
-
+from .constants import Config
 import arrow
 
 def get_history(user_history_url, start_date=None, end_date=None):
@@ -29,8 +25,8 @@ def get_history(user_history_url, start_date=None, end_date=None):
 
             # PARSING ITEM DATE
             item_date = item.find('span', class_='format-date')['data-date']
-            item_date = arrow.get(item_date).to('local').format(USER_DATE_FORMAT)
-            item_day = arrow.get(item_date).format(USER_DAY_FORMAT)
+            item_date = arrow.get(item_date).to('local').format(Config.USER_DATE_FORMAT)
+            item_day = arrow.get(item_date).format(Config.USER_DAY_FORMAT)
 
             # PARSING ITEM RATING
             """
@@ -53,7 +49,7 @@ def get_history(user_history_url, start_date=None, end_date=None):
         if start_date is not None and end_date is not None:
             items_dates = data['days'].copy().keys()
             arrange = arrow.Arrow.range('day', arrow.get(start_date), arrow.get(end_date))
-            arrange = [date.format(USER_DAY_FORMAT) for date in arrange]
+            arrange = [date.format(Config.USER_DAY_FORMAT) for date in arrange]
             # arrange = map(lambda x: x.format(day_format), arrange)
 
             for date in items_dates:
