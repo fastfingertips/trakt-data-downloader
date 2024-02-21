@@ -1,4 +1,4 @@
-from .scraper import get_dom
+from .scraper import Responser
 
 def update_ratings(ratings_url:str, context:dict) -> dict:
     """
@@ -8,14 +8,14 @@ def update_ratings(ratings_url:str, context:dict) -> dict:
     - episode (+)
     - season
     """
-    dom = get_dom(ratings_url)
+    ratings_dom = Responser(ratings_url).dom
     try:
-        last_page = int(dom.find_all('li', class_='page')[-1].text)
+        last_page = int(ratings_dom.find_all('li', class_='page')[-1].text)
         print('last page: ', last_page)
         current_page =1
         while True:
             print(f'Rating Page {current_page}/{last_page}')
-            current_dom = get_dom(f"{ratings_url}?page={current_page}")
+            current_dom = Responser(f"{ratings_url}?page={current_page}").dom
             items = current_dom.find_all('div', class_='grid-item')
             # For example, <h4 class="ellipsify"><i class="fa-solid fa-heart grid-trakt-heart rating-4"></i> <b>4</b> — Poor</h4>
             for item in items:

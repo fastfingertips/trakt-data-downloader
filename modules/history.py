@@ -1,7 +1,7 @@
 from .scraper import (
-    get_dom,
-    get_element_attrs,
-    get_meta_attrs
+    Responser,
+    Element,
+    Meta,
 )
 
 from .constants import Config
@@ -11,13 +11,14 @@ def get_history(user_history_url, start_date=None, end_date=None):
     data = {
         'days': {},
     }
-    dom = get_dom(user_history_url)
-    last_page = int(dom.find_all('li', class_='page')[-1].text)
+
+    history_dom = Responser(user_history_url).dom
+    last_page = int(history_dom.find_all('li', class_='page')[-1].text)
     print('last page: ', last_page)
     current_page = 1
     while True:
         print(f'History Page {current_page}/{last_page}')
-        current_dom = get_dom(f"{user_history_url}?page={current_page}")
+        current_dom = Responser(f"{user_history_url}?page={current_page}").dom
 
         # ITEMS
         items = current_dom.find_all('div', class_='grid-item')
@@ -41,8 +42,8 @@ def get_history(user_history_url, start_date=None, end_date=None):
                 {
                 'date': item_date, # ITEM DATE
                 **{att: item[att] for att in item.attrs}, # ITEM ATTRIBUTES
-                **get_meta_attrs(item), # ITEM META ATTRIBUTES
-                **get_element_attrs(item, 'img'), # ITEM IMG ATTRIBUTES
+                **Meta(item).attrs, # ITEM META ATTRIBUTES
+                **Element(item, 'img').attrs, # ITEM IMG ATTRIBUTES
                 }
             )
 
