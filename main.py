@@ -1,7 +1,10 @@
-from modules.ratings import update_ratings
+from modules.pages import (
+  History,
+  Ratings
+)
+
 from modules.scraper import Responser
 from modules.constants import Config
-from modules.history import History
 import json
 import sys
 import os
@@ -31,7 +34,7 @@ if __name__ == '__main__':
     history_parsed_data = history.parsed_data
     
     # Process history data
-    history_parsed_data_ratings = update_ratings(
+    history_parsed_data_ratings = Ratings.update_ratings(
         config.USER_RATINGS_URL,
         history_parsed_data
         )
