@@ -1,11 +1,7 @@
-from modules.history import (
-    history_reader,
-    get_history
-)
-
 from modules.ratings import update_ratings
 from modules.scraper import Responser
 from modules.constants import Config
+from modules.history import History
 import json
 import sys
 import os
@@ -25,15 +21,20 @@ if __name__ == '__main__':
     assert Responser(config.USER_PROFILE_URL).is_success, f"Invalid username: {config.username}"
 
     # Fetch history data
-    history = get_history(
+    history = History(
         user_history_url=config.USER_HISTORY_URL,
         # start_date="2023-11-14",
         # end_date= arrow.now().format(USER_DAY_FORMAT)
     )
 
+    history_data = history.data
+    history_parsed_data = history.parsed_data
+    
     # Process history data
-    context = history_reader(history)
-    context = update_ratings(config.USER_RATINGS_URL, context)
+    history_parsed_data_ratings = update_ratings(
+        config.USER_RATINGS_URL,
+        history_parsed_data
+        )
 
     # Create exports directory 
     if not os.path.exists(config.EXPORTS_DIR):
@@ -46,7 +47,7 @@ if __name__ == '__main__':
         )
 
     with open(history_path, 'w') as f: 
-        json.dump(history, f, indent=2)
+        json.dump(history_data, f, indent=2)
 
     # Export context to JSON  
     context_path = os.path.join(
@@ -55,6 +56,6 @@ if __name__ == '__main__':
         )
 
     with open(context_path, 'w') as f: 
-        json.dump(context, f, indent=2)
+        json.dump(history_parsed_data_ratings, f, indent=2)
 
     print("Done.")
